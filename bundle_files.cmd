@@ -22,7 +22,7 @@ echo start_time: %format_date%%format_time%
 rem ====取得先フォルダ====
 set target_dir=%USERPROFILE%\Desktop
 rem ====保存先フォルダ=====
-set save_dir=%USERPROFILE%\Document\archives
+set save_dir=%USERPROFILE%\Documents\archives
 echo save_dir: %save_dir%
 rem ====ファイルを集めるフォルダ名====
 set dir_name=archive_%format_date%_%format_time%
@@ -33,10 +33,10 @@ rem ====実行ファイルのパス取得====
 set exe_dir=%~dp0
 echo exe_dir: %exe_dir%
 
-rem cd %target_dir%
+cd %target_dir%
 
 rem ====ファイル・フォルダを一か所にコピーする====
-rem rem ディレクトリの時はファイル構造ごとコピーする
+rem ディレクトリの時はファイル構造ごとコピーする
 for /f "usebackq delims=:" %%i in (`dir /b`) do (
     set copy_source=%target_dir%\%%i
     echo source: !copy_source!
