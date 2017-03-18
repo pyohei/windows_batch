@@ -1,8 +1,21 @@
 @echo off
 
+rem Windowsデスクトップ掃除ツール
+rem   Windowsのデスクトップのファイルを全てアーカイブする。
+rem 
+rem 処理フロー
+rem   - 各種設定
+rem   - ファイルのコピー
+rem   - ファイルの削除
+rem
+rem その他
+rem   %USERPROFILE%\archive_ignores.ini に無視ファイルorディレクトリを記載
+rem   すると無視するような仕様とした
+
+
 rem 遅延環境変数の展開（for内の変数が上手く動作するように）
 rem 変数を使用するときも%ではなく!を使用する
-setlocal ENABLEDELAYEDEXPANSION
+setlocal ENABLEDELAYEDEXPANSIONS
 
 echo ---process start---
 set start_date=%date%
@@ -11,6 +24,7 @@ echo %date%%time%
 
 rem 引数が指定されていない時はから文字列が入り、
 rem 文字列判定が正しく行われなくなるため、ダミー文字を付ける
+
 set arg1=%1/
 echo arg1: %arg1%
 
@@ -33,6 +47,7 @@ rem ====実行ファイルのパス取得====
 set exe_dir=%~dp0
 echo exe_dir: %exe_dir%
 
+mkdir %save_dir%
 cd %target_dir%
 
 rem ====ファイル・フォルダを一か所にコピーする====
@@ -40,14 +55,19 @@ rem ディレクトリの時はファイル構造ごとコピーする
 for /f "usebackq delims=:" %%i in (`dir /b`) do (
     set copy_source=%target_dir%\%%i
     echo source: !copy_source!
-    echo dest: %save_dir%\%dir_name%
+    echo dest: %save_dir%
     
-    if exist !copy_source!\ (
-        xcopy !copy_source! %save_dir%\%%i\ /e 
-	echo ---copy directory---
+    call :isTarget %%i
+    if errorlevel 1 (
+        echo Ignore File
     ) else (
-	copy !copy_source! %save_dir%\ 
-	echo ---copy file---
+        if exist !copy_source!\ (
+            xcopy !copy_source! %save_dir%\%%i\ /e 
+            echo ---copy directory---
+        ) else (
+            copy !copy_source! %save_dir%\ 
+            echo ---copy file---
+        )
     )
 )
 
@@ -58,12 +78,17 @@ if not %arg1% == /test/ (
     for /f "usebackq delims=:" %%i in (`dir /b`) do (
         set copy_source=%target_dir%\%%i
         
-        if exist !copy_source!\ (
-            rd /s /q !copy_source!
-            echo ---delete directory---
+        call :isTarget %%i
+        if errorlevel 1 (
+            echo Ignore File
         ) else (
-            del !copy_source!
-            echo ---delete file---
+            if exist !copy_source!\ (
+                rd /s /q !copy_source!
+                echo ---delete directory---
+            ) else (
+                del !copy_source!
+                echo ---delete file---
+            )
         )
     )
 )
@@ -76,5 +101,22 @@ echo ---process end---
 echo start_time: %start_date% %start_time%
 echo end_time  : %end_date% %end_time%
 
-pause
+endlocal
 
+rem ファイル/ディレクトリが対象かどうか判定する
+rem ERRORLEVELで判定できるようなサブルーチンとした
+:isTarget
+set IGNORE_FILE=%USERPROFILE%\archive_ignores.ini
+if exist %IGNORE_FILE% (
+    echo =====
+    echo %1
+    for /f "delims=" %%i in (%IGNORE_FILE%) do (
+        echo %%i
+        echo "%1" "%%i"
+        if "%1" == "%%i" (
+            echo ignore yahoo
+            exit /B 1
+        )
+    )
+)
+exit /B 0
