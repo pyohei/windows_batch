@@ -9,7 +9,7 @@ rem   - ファイルのコピー
 rem   - ファイルの削除
 rem 
 rem オプション
-rem   /test/ ... テストモード。ファイルのコピーのみする。
+rem   /test ... テストモード。ファイルのコピーのみする。
 rem 
 rem その他
 rem   %USERPROFILE%\archive_ignores.ini に無視ファイルorディレクトリを記載
@@ -79,23 +79,27 @@ for /f "usebackq delims=:" %%i in (`dir /b`) do (
     if errorlevel 1 (
         call :logging Ignore
     ) else (
+        rem echo "!copy_source!" "%save_dir%\%%i"\
         if exist !copy_source!\ (
-            xcopy !copy_source! %save_dir%\%%i\ /e
             call :logging ---copy directory---
             if %IS_TEST% == 0 (
-                move "!copy_source!" %save_dir%\%%i
+                rem echo "!copy_source!" "%save_dir%"
+                move /Y "!copy_source!" "%save_dir%"
                 if errorlevel 1 (
                     call :logging Move Error
                 )
+            ) else (
+                xcopy /E /I "!copy_source!" "%save_dir%\%%i" 
             )
         ) else (
-            copy "!copy_source!" %save_dir%\ 
             call :logging ---copy file---
             if %IS_TEST% == 0 (
-                move "!copy_source!" %save_dir%\
+                move /Y "!copy_source!" "%save_dir%"
                 if errorlevel 1 (
                     call :logging Move Error
                 )
+            ) else (
+                copy "!copy_source!" "%save_dir%"
             )
         )
     )
