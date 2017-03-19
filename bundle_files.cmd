@@ -31,7 +31,13 @@ rem 文字列判定が正しく行われなくなるため、ダミー文字を�
 
 set arg1=%1/
 call :logging arg1: %arg1%
+set IS_TEST=0
+if %arg1% == /test/ (
+    set IS_TEST=1
+    call :logging [TEST MODE]
+)
 
+rem アーカイブフォルダのフォルダ名の設定
 set format_date=%date:/=_%
 set format_time=%time::=%
 set format_time=%format_time: =%
@@ -52,66 +58,48 @@ rem ====実行ファイルのパス取得====
 set exe_dir=%~dp0
 call :logging exe_dir: %exe_dir%
 
+rem アーカイブ用のディレクトリを作成
 mkdir %save_dir%
 cd %target_dir%
 
 rem ====ファイル・フォルダを一か所にコピーする====
 rem ディレクトリの時はファイル構造ごとコピーする
+rem 
+rem TODO:
+rem    copyやmoveの結果をログに出力するようにしたい。
+rem    方法は > `ログ名`とすればよい。がパイプとか使えないかな？
 
+call :logging "Start File Backup-->"
 for /f "usebackq delims=:" %%i in (`dir /b`) do (
-    rem set copy_source=%target_dir%\%%i
-    set file=%%i
-    echo !file!
+    set copy_source=%target_dir%\%%i
     call :logging source: !copy_source!
     call :logging dest: %save_dir%
-    
-    echo !copy_source!
 
     call :isTarget %%i
-
     if errorlevel 1 (
         call :logging Ignore
     ) else (
         if exist !copy_source!\ (
-            xcopy !copy_source! %save_dir%\%%i\ /e 
+            xcopy !copy_source! %save_dir%\%%i\ /e
             call :logging ---copy directory---
-            move %copy_source% %save_dir%\%%i
-            if errorlevel 1 (
-                call :logging Move Error
+            if %IS_TEST% == 0 (
+                move "!copy_source!" %save_dir%\%%i
+                if errorlevel 1 (
+                    call :logging Move Error
+                )
             )
         ) else (
-            copy !copy_source! %save_dir%\ 
+            copy "!copy_source!" %save_dir%\ 
             call :logging ---copy file---
-            move %copy_source% %save_dir%\
-            if errorlevel 1 (
-                call :logging Move Error
+            if %IS_TEST% == 0 (
+                move "!copy_source!" %save_dir%\
+                if errorlevel 1 (
+                    call :logging Move Error
+                )
             )
         )
     )
 )
-
-
-rem rem ====ファイル・フォルダを削除する====
-rem rem ディレクトリの時はファイル構造ごとコピーする
-rem rem テストモードではファイル・フォルダの削除はしない
-rem if not %arg1% == /test/ (
-rem     for /f "usebackq delims=:" %%i in (`dir /b`) do (
-rem         set copy_source=%target_dir%\%%i
-rem         
-rem         call :isTarget %%i
-rem         if errorlevel 1 (
-rem             echo Ignore File
-rem         ) else (
-rem             if exist !copy_source!\ (
-rem                 rd /s /q !copy_source!
-rem                 echo ---delete directory---
-rem             ) else (
-rem                 del !copy_source!
-rem                 echo ---delete file---
-rem             )
-rem         )
-rem     )
-rem )
 
 cd %exe_dir%
 
@@ -122,13 +110,14 @@ echo Finish.
 
 rem ===========
 rem ファイル/ディレクトリが対象かどうか判定。対象可否は%ERRORLEVEL%で判定
+rem Windowsでは空白ファイル名を許可するので、全引数を受け取るようにしている
 
 :isTarget
 set IGNORE_FILE=%USERPROFILE%\archive_ignores.ini
 if exist %IGNORE_FILE% (
     for /f "delims=" %%i in (%IGNORE_FILE%) do (
-        if "%1" == "%%i" (
-            call :logging %1 is ignore.
+        if "%*" == "%%i" (
+            rem call :logging %1 is ignore.
             exit /B 1
         )
     )
